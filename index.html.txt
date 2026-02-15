@@ -1,0 +1,64 @@
+GRE TUNNEL
+Настройка
+## ШАГ 1 — УДАЛИТЕ СТАРЫЕ НЕПРАВИЛЬНЫЕ НАСТРОЙКИ(Если есть)
+### На rtr-a:
+```
+/interface gre remove gre-tunnel
+```
+```
+/ip address remove [find interface=gre-tunnel]
+```
+### На rtr-cod:
+```
+/interface gre remove gre-tunnel
+```
+```
+/ip address remove [find interface=gre-tunnel]
+```
+##  ШАГ 2 — СОЗДАЙТЕ GRE ТУННЕЛЬ ЗАНОВО
+### На rtr-a (IP: 192.168.137.18):
+```
+/interface gre add name=gre-tunnel local-address=192.168.137.18 remote-address=192.168.137.143 mtu=1476 keepalive=10s,10 comment="GRE to rtr-cod"
+```
+```
+/ip address add address=10.10.10.1/30 interface=gre-tunnel
+```
+### На rtr-cod (IP: 192.168.137.143):
+```
+/interface gre add name=gre-tunnel local-address=192.168.137.143 remote-address=192.168.137.18 mtu=1476 keepalive=10s,10 comment="GRE to rtr-a"
+```
+```
+/ip address add address=10.10.10.2/30 interface=gre-tunnel
+```
+## ШАГ 3 — ПРОВЕРЬТЕ ФИЗИЧЕСКУЮ СВЯЗНОСТЬ
+### С rtr-a:
+```
+/ping 192.168.137.143 count=4
+```
+### С rtr-cod:
+```
+/ping 192.168.137.18 count=4
+```
+## ШАГ 4 — ПРОВЕРЬТЕ GRE ТУННЕЛЬ
+### С rtr-a:
+```
+/ping 10.10.10.2 count=4
+```
+## ШАГ 5 — ЕСЛИ ФИЗИЧЕСКИЙ ПИНГ НЕ РАБОТАЕТ
+### Проверьте firewall на ОБОИХ роутерах:
+```
+/ip firewall filter print
+```
+Если есть правила с `action=drop` или `reject` для цепочек `input` — временно отключите или добавьте разрешающие правила перед ними:
+```
+/ip firewall filter add chain=input protocol=icmp action=accept place-before=1
+```
+```
+/ip firewall filter add chain=input protocol=gre action=accept place-before=1
+```
+## ШАГ 6 — ПРОВЕРЬТЕ СТАТУС GRE
+### На обоих роутерах:
+```
+/interface gre print where name=gre-tunnel
+```
+Должен быть флаг **R (running)**.
